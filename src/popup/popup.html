@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ACC 指摘事項ビューア</title>
+  <style>
+    /* ─── リセット & 変数 ────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:       #0696D7;  /* Autodesk blue */
+      --primary-dark:  #0578B8;
+      --accent:        #E36C0A;  /* ACC orange */
+      --bg:            #F5F5F5;
+      --surface:       #FFFFFF;
+      --border:        #E0E0E0;
+      --text:          #3C3C3C;
+      --text-muted:    #767676;
+      --danger:        #C0392B;
+      --success:       #27AE60;
+      --warning:       #E67E22;
+      --info:          #2980B9;
+      --status-open:        #E74C3C;
+      --status-in_progress: #E67E22;
+      --status-answered:    #3498DB;
+      --status-closed:      #27AE60;
+      --radius:        6px;
+      --shadow:        0 1px 4px rgba(0,0,0,.12);
+    }
+
+    body {
+      width: 420px;
+      min-height: 480px;
+      max-height: 600px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ─── ヘッダー ────────────────────────────────────────────────────── */
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    header .logo {
+      font-weight: 700;
+      font-size: 14px;
+      flex: 1;
+    }
+
+    header .logo span {
+      color: #FFC370;
+    }
+
+    #btn-logout {
+      background: rgba(255,255,255,.2);
+      border: 1px solid rgba(255,255,255,.4);
+      color: white;
+      border-radius: var(--radius);
+      padding: 4px 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    #btn-logout:hover { background: rgba(255,255,255,.35); }
+
+    /* ─── メインコンテンツ ────────────────────────────────────────────── */
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* ─── ログイン画面 ────────────────────────────────────────────────── */
+    #view-login {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 32px 20px;
+    }
+
+    .login-icon {
+      width: 64px;
+      height: 64px;
+      background: var(--primary);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 28px;
+    }
+
+    .login-title {
+      font-size: 16px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .login-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    .security-note {
+      background: #EBF8FF;
+      border: 1px solid #BEE3F8;
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      font-size: 11px;
+      color: #2B6CB0;
+      line-height: 1.5;
+      width: 100%;
+    }
+
+    .security-note strong { display: block; margin-bottom: 2px; }
+
+    /* ─── ボタン ─────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: none;
+      border-radius: var(--radius);
+      padding: 8px 18px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background .15s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      width: 100%;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+    .btn-ghost:hover { background: var(--border); }
+
+    /* ─── セレクター ─────────────────────────────────────────────────── */
+    .selector-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .selector-group label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    select {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      font-size: 13px;
+      color: var(--text);
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23767676' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 28px;
+    }
+
+    select:disabled { opacity: .5; }
+
+    /* ─── フィルター ─────────────────────────────────────────────────── */
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .filter-row .selector-group { flex: 1; }
+
+    /* ─── 指摘一覧 ────────────────────────────────────────────────────── */
+    .issues-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .issues-count {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .issues-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .issue-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: box-shadow .1s, border-color .1s;
+    }
+    .issue-card:hover {
+      box-shadow: var(--shadow);
+      border-color: var(--primary);
+    }
+
+    .issue-card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .issue-title {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .badge-open        { background: #FDEDEC; color: var(--status-open); }
+    .badge-in_progress { background: #FEF9E7; color: var(--status-in_progress); }
+    .badge-answered    { background: #EBF5FB; color: var(--status-answered); }
+    .badge-closed      { background: #EAFAF1; color: var(--status-closed); }
+    .badge-default     { background: #F0F0F0; color: var(--text-muted); }
+
+    .issue-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* ─── 詳細モーダル ────────────────────────────────────────────────── */
+    #view-detail {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .detail-back {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--primary);
+      cursor: pointer;
+      border: none;
+      background: none;
+      padding: 0;
+    }
+
+    .detail-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+
+    .detail-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
+    .detail-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .detail-field {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .detail-field label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+
+    .detail-field span {
+      font-size: 12px;
+      word-break: break-all;
+    }
+
+    /* ─── ローディング ────────────────────────────────────────────────── */
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 24px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── エラー ─────────────────────────────────────────────────────── */
+    .error-box {
+      background: #FDEDEC;
+      border: 1px solid #F5C6C3;
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      font-size: 12px;
+      color: var(--danger);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .error-box .error-msg { font-weight: 500; }
+
+    /* ─── 空状態 ─────────────────────────────────────────────────────── */
+    .empty {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12px;
+      padding: 24px;
+    }
+
+    /* ─── ページネーション ────────────────────────────────────────────── */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* ─── ユーティリティ ─────────────────────────────────────────────── */
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">ACC <span>指摘事項</span></div>
+    <button id="btn-logout" class="hidden">ログアウト</button>
+  </header>
+
+  <main>
+    <!-- ── ログインビュー ─────────────────────────────────── -->
+    <div id="view-login">
+      <div class="login-icon">&#128274;</div>
+      <div class="login-title">Autodesk アカウントでログイン</div>
+      <div class="login-desc">
+        ACC の指摘事項を確認するには<br>
+        Autodesk アカウントでの認証が必要です
+      </div>
+      <div class="security-note">
+        <strong>&#128274; セキュリティについて</strong>
+        OAuth 2.0 PKCE フローを使用。クライアントシークレットは保持せず、
+        認証情報はセッション中のみメモリに保持されます。
+      </div>
+      <button id="btn-login" class="btn btn-primary">
+        <span>Autodesk でログイン</span>
+      </button>
+    </div>
+
+    <!-- ── メインビュー ───────────────────────────────────── -->
+    <div id="view-main" class="hidden">
+      <!-- ハブ選択 -->
+      <div class="selector-group">
+        <label>ハブ (Hub)</label>
+        <select id="sel-hub">
+          <option value="">ハブを選択...</option>
+        </select>
+      </div>
+
+      <!-- プロジェクト選択 -->
+      <div class="selector-group">
+        <label>プロジェクト</label>
+        <select id="sel-project" disabled>
+          <option value="">プロジェクトを選択...</option>
+        </select>
+      </div>
+
+      <!-- フィルター -->
+      <div class="filter-row">
+        <div class="selector-group">
+          <label>ステータス</label>
+          <select id="sel-status">
+            <option value="">すべて</option>
+            <option value="open">未対応</option>
+            <option value="in_progress">対応中</option>
+            <option value="answered">回答済</option>
+            <option value="closed">完了</option>
+          </select>
+        </div>
+        <button id="btn-reload" class="btn btn-ghost" title="再読み込み">&#8635;</button>
+      </div>
+
+      <!-- 指摘一覧 -->
+      <div id="issues-container"></div>
+    </div>
+
+    <!-- ── 詳細ビュー ─────────────────────────────────────── -->
+    <div id="view-detail" class="hidden">
+      <button class="detail-back" id="btn-back">&#8592; 一覧に戻る</button>
+      <div id="detail-container"></div>
+    </div>
+
+    <!-- ── ローディング ───────────────────────────────────── -->
+    <div id="view-loading" class="loading hidden">
+      <div class="spinner"></div>
+      <span id="loading-text">読み込み中...</span>
+    </div>
+  </main>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
