@@ -123,6 +123,42 @@ export async function fetchIssueDetail(accessToken, projectId, issueId) {
 }
 
 /**
+ * 指摘事項のコメント一覧を取得する
+ * @param {string} accessToken
+ * @param {string} projectId
+ * @param {string} issueId
+ * @returns {Promise<Comment[]>}
+ */
+export async function fetchIssueComments(accessToken, projectId, issueId) {
+  const normalizedProjectId = projectId.replace(/^b\./, '');
+  const data = await apiFetch(
+    `${CONFIG.API_BASE}/construction/issues/v2/projects/${encodeURIComponent(normalizedProjectId)}/issues/${encodeURIComponent(issueId)}/comments`,
+    accessToken,
+  );
+  return data.results ?? [];
+}
+
+/**
+ * 指摘事項にコメントを投稿する
+ * @param {string} accessToken
+ * @param {string} projectId
+ * @param {string} issueId
+ * @param {string} body - コメント本文（最大 10000 文字）
+ * @returns {Promise<Comment>}
+ */
+export async function postIssueComment(accessToken, projectId, issueId, body) {
+  const normalizedProjectId = projectId.replace(/^b\./, '');
+  return apiFetch(
+    `${CONFIG.API_BASE}/construction/issues/v2/projects/${encodeURIComponent(normalizedProjectId)}/issues/${encodeURIComponent(issueId)}/comments`,
+    accessToken,
+    {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    },
+  );
+}
+
+/**
  * API エラークラス
  */
 export class ApiError extends Error {

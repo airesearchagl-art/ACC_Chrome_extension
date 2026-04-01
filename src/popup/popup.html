@@ -5,35 +5,52 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ACC 指摘事項ビューア</title>
   <style>
-    /* ─── リセット & 変数 ────────────────────────────────────────────── */
+    /* ─── リセット & 変数 ──────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --primary:       #0696D7;  /* Autodesk blue */
+      --primary:       #0696D7;
       --primary-dark:  #0578B8;
-      --accent:        #E36C0A;  /* ACC orange */
-      --bg:            #F5F5F5;
+      --accent:        #E36C0A;
+      --bg:            #F2F4F6;
       --surface:       #FFFFFF;
-      --border:        #E0E0E0;
-      --text:          #3C3C3C;
-      --text-muted:    #767676;
+      --border:        #DDE1E7;
+      --border-hover:  #B0BAC9;
+      --text:          #1A1A2E;
+      --text-sub:      #4A5568;
+      --text-muted:    #8A96A8;
       --danger:        #C0392B;
-      --success:       #27AE60;
-      --warning:       #E67E22;
-      --info:          #2980B9;
-      --status-open:        #E74C3C;
-      --status-in_progress: #E67E22;
-      --status-answered:    #3498DB;
-      --status-closed:      #27AE60;
       --radius:        6px;
-      --shadow:        0 1px 4px rgba(0,0,0,.12);
+      --radius-sm:     4px;
+      --shadow:        0 1px 4px rgba(0,0,0,.10);
+      --shadow-md:     0 2px 8px rgba(0,0,0,.14);
+
+      /* ステータスカラー */
+      --s-open:           #E74C3C;
+      --s-open-bg:        #FDEDEC;
+      --s-pending:        #9B59B6;
+      --s-pending-bg:     #F5EEF8;
+      --s-in_progress:    #E67E22;
+      --s-in_progress-bg: #FEF9E7;
+      --s-work_completed: #1ABC9C;
+      --s-work_completed-bg: #E8F8F5;
+      --s-answered:       #2980B9;
+      --s-answered-bg:    #EBF5FB;
+      --s-not_approved:   #C0392B;
+      --s-not_approved-bg:#FDEDEC;
+      --s-closed:         #27AE60;
+      --s-closed-bg:      #EAFAF1;
+      --s-void:           #7F8C8D;
+      --s-void-bg:        #F0F3F4;
+      --s-draft:          #95A5A6;
+      --s-draft-bg:       #F8F9FA;
     }
 
     body {
-      width: 420px;
+      width: 600px;
       min-height: 480px;
-      max-height: 600px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-height: 640px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Yu Gothic UI', sans-serif;
       font-size: 13px;
       color: var(--text);
       background: var(--bg);
@@ -41,7 +58,7 @@
       flex-direction: column;
     }
 
-    /* ─── ヘッダー ────────────────────────────────────────────────────── */
+    /* ─── ヘッダー ──────────────────────────────────────────────────────── */
     header {
       background: var(--primary);
       color: white;
@@ -50,73 +67,53 @@
       align-items: center;
       gap: 10px;
       flex-shrink: 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,.18);
     }
 
-    header .logo {
-      font-weight: 700;
-      font-size: 14px;
-      flex: 1;
-    }
-
-    header .logo span {
-      color: #FFC370;
-    }
+    .logo { font-weight: 700; font-size: 14px; flex: 1; letter-spacing: .3px; }
+    .logo span { color: #FFC370; }
 
     #btn-logout {
-      background: rgba(255,255,255,.2);
-      border: 1px solid rgba(255,255,255,.4);
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.38);
       color: white;
       border-radius: var(--radius);
-      padding: 4px 10px;
+      padding: 4px 11px;
       cursor: pointer;
       font-size: 12px;
+      transition: background .15s;
     }
-    #btn-logout:hover { background: rgba(255,255,255,.35); }
+    #btn-logout:hover { background: rgba(255,255,255,.32); }
 
-    /* ─── メインコンテンツ ────────────────────────────────────────────── */
+    /* ─── メインコンテンツ ──────────────────────────────────────────────── */
     main {
       flex: 1;
       overflow-y: auto;
       padding: 12px 14px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
     }
 
-    /* ─── ログイン画面 ────────────────────────────────────────────────── */
+    /* ─── ログインビュー ────────────────────────────────────────────────── */
     #view-login {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       gap: 16px;
-      padding: 32px 20px;
+      padding: 32px 40px;
     }
 
     .login-icon {
-      width: 64px;
-      height: 64px;
+      width: 60px; height: 60px;
       background: var(--primary);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 28px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 26px;
     }
 
-    .login-title {
-      font-size: 16px;
-      font-weight: 600;
-      text-align: center;
-    }
-
-    .login-desc {
-      font-size: 12px;
-      color: var(--text-muted);
-      text-align: center;
-      line-height: 1.6;
-    }
+    .login-title { font-size: 16px; font-weight: 600; text-align: center; }
+    .login-desc  { font-size: 12px; color: var(--text-muted); text-align: center; line-height: 1.6; }
 
     .security-note {
       background: #EBF8FF;
@@ -125,171 +122,361 @@
       padding: 8px 12px;
       font-size: 11px;
       color: #2B6CB0;
-      line-height: 1.5;
+      line-height: 1.6;
       width: 100%;
     }
-
     .security-note strong { display: block; margin-bottom: 2px; }
 
-    /* ─── ボタン ─────────────────────────────────────────────────────── */
+    /* ─── ボタン ────────────────────────────────────────────────────────── */
     .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      border: none;
-      border-radius: var(--radius);
-      padding: 8px 18px;
-      font-size: 13px;
-      cursor: pointer;
-      transition: background .15s;
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 5px; border: none; border-radius: var(--radius);
+      padding: 7px 14px; font-size: 12px; cursor: pointer;
+      transition: background .15s, opacity .15s;
+      white-space: nowrap;
     }
 
-    .btn-primary {
-      background: var(--primary);
-      color: white;
-      width: 100%;
-    }
+    .btn-primary { background: var(--primary); color: white; width: 100%; padding: 9px; font-size: 13px; }
     .btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
-    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
 
     .btn-ghost {
       background: transparent;
       border: 1px solid var(--border);
-      color: var(--text);
-      padding: 5px 10px;
-      font-size: 12px;
+      color: var(--text-sub);
     }
-    .btn-ghost:hover { background: var(--border); }
+    .btn-ghost:hover:not(:disabled) { background: var(--bg); border-color: var(--border-hover); }
+    .btn-ghost:disabled { opacity: .4; cursor: not-allowed; }
 
-    /* ─── セレクター ─────────────────────────────────────────────────── */
-    .selector-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
+    /* ─── フォームコントロール ──────────────────────────────────────────── */
+    .selector-group { display: flex; flex-direction: column; gap: 5px; }
     .selector-group label {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: .5px;
+      font-size: 10px; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: .6px;
     }
 
     select {
-      width: 100%;
-      padding: 7px 10px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--surface);
-      font-size: 13px;
-      color: var(--text);
+      width: 100%; padding: 6px 28px 6px 9px;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--surface); font-size: 13px; color: var(--text);
       appearance: none;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23767676' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 10px center;
-      padding-right: 28px;
+      background-repeat: no-repeat; background-position: right 9px center;
     }
-
     select:disabled { opacity: .5; }
 
-    /* ─── フィルター ─────────────────────────────────────────────────── */
-    .filter-row {
-      display: flex;
-      gap: 8px;
-      align-items: flex-end;
-    }
-
+    .filter-row { display: flex; gap: 8px; align-items: flex-end; }
     .filter-row .selector-group { flex: 1; }
 
-    /* ─── 指摘一覧 ────────────────────────────────────────────────────── */
-    .issues-header {
-      display: flex;
+    /* ─── ステータスバッジ ──────────────────────────────────────────────── */
+    /*
+     * 各バッジは左ボーダー（4px）+ 背景色で視覚的に区別する。
+     * アクセシビリティのため色だけでなくラベルテキストも必ず持つ。
+     */
+    .badge {
+      display: inline-flex;
       align-items: center;
-      justify-content: space-between;
+      padding: 2px 7px 2px 6px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+      letter-spacing: .2px;
+      border-left: 3px solid transparent;
     }
 
-    .issues-count {
-      font-size: 11px;
+    .badge-open         { background: var(--s-open-bg);         color: var(--s-open);         border-left-color: var(--s-open);         }
+    .badge-pending      { background: var(--s-pending-bg);      color: var(--s-pending);      border-left-color: var(--s-pending);      }
+    .badge-in_progress  { background: var(--s-in_progress-bg);  color: var(--s-in_progress);  border-left-color: var(--s-in_progress);  }
+    .badge-work_completed { background: var(--s-work_completed-bg); color: var(--s-work_completed); border-left-color: var(--s-work_completed); }
+    .badge-answered     { background: var(--s-answered-bg);     color: var(--s-answered);     border-left-color: var(--s-answered);     }
+    .badge-not_approved { background: var(--s-not_approved-bg); color: var(--s-not_approved); border-left-color: var(--s-not_approved); }
+    .badge-closed       { background: var(--s-closed-bg);       color: var(--s-closed);       border-left-color: var(--s-closed);       }
+    .badge-void         { background: var(--s-void-bg);         color: var(--s-void);         border-left-color: var(--s-void);         }
+    .badge-draft        { background: var(--s-draft-bg);        color: var(--s-draft);        border-left-color: var(--s-draft);        }
+    .badge-default      { background: #F0F3F4;                  color: var(--text-muted);     border-left-color: var(--text-muted);     }
+
+    /* ─── 指摘テーブル ──────────────────────────────────────────────────── */
+    .table-wrapper {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .issues-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .issues-table thead tr {
+      background: #F7F8FA;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .issues-table th {
+      padding: 7px 8px;
+      font-size: 10px;
+      font-weight: 700;
       color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      text-align: left;
+      user-select: none;
     }
 
-    .issues-list {
+    /* 列幅定義 */
+    .col-num    { width: 28px;  text-align: center; }
+    .col-title  { width: auto; }
+    .col-status { width: 80px; }
+    .col-assign { width: 76px; }
+    .col-due    { width: 70px; }
+    .col-reply  { width: 38px; }
+
+    /* データ行 */
+    .issue-row {
+      border-bottom: 1px solid var(--border);
+      transition: background .1s;
+    }
+    .issue-row:last-child { border-bottom: none; }
+    .issue-row:hover { background: #F7FAFE; }
+    .issue-row.has-reply-open { background: #EFF7FF; }
+
+    .issues-table td {
+      padding: 8px 8px;
+      font-size: 12px;
+      vertical-align: middle;
+      line-height: 1.35;
+    }
+
+    .td-num {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .td-title {
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+      color: var(--primary);
+      max-width: 0; /* required for ellipsis in table-layout:fixed */
+    }
+    .td-title:hover { text-decoration: underline; }
+
+    .td-assign, .td-due {
+      color: var(--text-sub);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 11px;
+    }
+
+    .td-due .overdue { color: var(--danger); font-weight: 600; }
+
+    /* クイック返信ボタン */
+    .btn-reply {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 3px 6px;
+      font-size: 13px;
+      line-height: 1;
+      transition: background .12s, color .12s, border-color .12s;
+    }
+    .btn-reply:hover   { background: #EBF5FB; border-color: var(--primary); color: var(--primary); }
+    .btn-reply.active  { background: #EBF5FB; border-color: var(--primary); color: var(--primary); }
+
+    /* ─── 返信パネル行 ──────────────────────────────────────────────────── */
+    .reply-row td {
+      padding: 0;
+      background: #F0F7FF;
+      border-bottom: 2px solid var(--primary);
+    }
+
+    .reply-panel {
+      padding: 10px 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* コメント履歴 */
+    .comment-history {
       display: flex;
       flex-direction: column;
       gap: 6px;
+      max-height: 140px;
+      overflow-y: auto;
     }
 
-    .issue-card {
+    .comment-item {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 10px 12px;
-      cursor: pointer;
-      transition: box-shadow .1s, border-color .1s;
-    }
-    .issue-card:hover {
-      box-shadow: var(--shadow);
-      border-color: var(--primary);
+      border-radius: var(--radius-sm);
+      padding: 7px 10px;
     }
 
-    .issue-card-header {
+    .comment-item.comment-new {
+      border-color: var(--primary);
+      animation: highlight-in .4s ease;
+    }
+
+    @keyframes highlight-in {
+      from { background: #D6EAF8; }
+      to   { background: var(--surface); }
+    }
+
+    .comment-meta {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       gap: 8px;
       margin-bottom: 4px;
     }
 
-    .issue-title {
-      flex: 1;
-      font-size: 13px;
-      font-weight: 500;
-      line-height: 1.3;
+    .comment-author {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-sub);
+    }
+
+    .comment-date {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .comment-body {
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
       word-break: break-word;
     }
 
-    .badge {
-      display: inline-block;
-      padding: 2px 7px;
-      border-radius: 10px;
-      font-size: 10px;
-      font-weight: 600;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-
-    .badge-open        { background: #FDEDEC; color: var(--status-open); }
-    .badge-in_progress { background: #FEF9E7; color: var(--status-in_progress); }
-    .badge-answered    { background: #EBF5FB; color: var(--status-answered); }
-    .badge-closed      { background: #EAFAF1; color: var(--status-closed); }
-    .badge-default     { background: #F0F0F0; color: var(--text-muted); }
-
-    .issue-meta {
+    .comment-empty {
       font-size: 11px;
       color: var(--text-muted);
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
+      text-align: center;
+      padding: 8px 0;
     }
 
-    /* ─── 詳細モーダル ────────────────────────────────────────────────── */
-    #view-detail {
+    .comment-loading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 6px 0;
+    }
+
+    /* 入力エリア */
+    .reply-input-area {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 6px;
     }
 
-    .detail-back {
+    .reply-textarea {
+      width: 100%;
+      min-height: 58px;
+      max-height: 120px;
+      padding: 7px 9px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-family: inherit;
+      color: var(--text);
+      resize: vertical;
+      transition: border-color .15s;
+      background: var(--surface);
+    }
+    .reply-textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(6,150,215,.15);
+    }
+    .reply-textarea:disabled { background: var(--bg); opacity: .6; }
+
+    .reply-footer {
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 12px;
-      color: var(--primary);
-      cursor: pointer;
+    }
+
+    .char-count {
+      font-size: 10px;
+      color: var(--text-muted);
+      flex: 1;
+    }
+    .char-count.near-limit { color: var(--accent); }
+    .char-count.at-limit   { color: var(--danger); }
+
+    .reply-submit-wrap {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-submit-reply {
+      background: var(--primary);
+      color: white;
       border: none;
+      border-radius: var(--radius-sm);
+      padding: 5px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background .15s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-submit-reply:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn-submit-reply:disabled { opacity: .45; cursor: not-allowed; }
+
+    .btn-cancel-reply {
       background: none;
-      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 5px 10px;
+      font-size: 12px;
+      color: var(--text-sub);
+      cursor: pointer;
+      transition: background .12s;
+    }
+    .btn-cancel-reply:hover { background: var(--bg); }
+
+    /* 送信成功トースト（行内） */
+    .inline-toast {
+      font-size: 11px;
+      color: var(--s-closed);
+      font-weight: 600;
+      animation: fade-out 2s forwards;
+    }
+    @keyframes fade-out {
+      0%   { opacity: 1; }
+      70%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* 行内エラー */
+    .inline-error {
+      font-size: 11px;
+      color: var(--danger);
+      background: var(--s-open-bg);
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+    }
+
+    /* ─── 詳細ビュー ────────────────────────────────────────────────────── */
+    #view-detail { display: flex; flex-direction: column; gap: 10px; }
+
+    .detail-back {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 12px; color: var(--primary);
+      cursor: pointer; border: none; background: none; padding: 0;
     }
 
     .detail-card {
@@ -299,12 +486,7 @@
       padding: 14px;
     }
 
-    .detail-title {
-      font-size: 15px;
-      font-weight: 600;
-      margin-bottom: 10px;
-      line-height: 1.4;
-    }
+    .detail-title { font-size: 15px; font-weight: 600; margin-bottom: 10px; line-height: 1.4; }
 
     .detail-fields {
       display: grid;
@@ -312,80 +494,67 @@
       gap: 8px;
     }
 
-    .detail-field {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
+    .detail-field { display: flex; flex-direction: column; gap: 2px; }
     .detail-field label {
-      font-size: 10px;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: .4px;
+      font-size: 10px; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: .4px;
+    }
+    .detail-field span { font-size: 12px; word-break: break-all; }
+
+    /* ─── ページネーション ──────────────────────────────────────────────── */
+    .pagination {
+      display: flex; justify-content: center; align-items: center;
+      gap: 10px; font-size: 12px; color: var(--text-muted);
+      padding: 4px 0;
     }
 
-    .detail-field span {
-      font-size: 12px;
-      word-break: break-all;
+    /* ─── テーブルヘッダーバー ──────────────────────────────────────────── */
+    .issues-header {
+      display: flex; align-items: center; justify-content: space-between;
     }
+    .issues-count { font-size: 11px; color: var(--text-muted); }
 
-    /* ─── ローディング ────────────────────────────────────────────────── */
+    /* ─── ローディング ──────────────────────────────────────────────────── */
     .loading {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      padding: 24px;
-      color: var(--text-muted);
-      font-size: 12px;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 10px; padding: 28px; color: var(--text-muted); font-size: 12px;
     }
 
     .spinner {
-      width: 24px;
-      height: 24px;
+      width: 22px; height: 22px;
       border: 3px solid var(--border);
       border-top-color: var(--primary);
       border-radius: 50%;
-      animation: spin .8s linear infinite;
+      animation: spin .75s linear infinite;
+    }
+    .spinner-sm {
+      width: 12px; height: 12px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .75s linear infinite;
+      flex-shrink: 0;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ─── エラー ─────────────────────────────────────────────────────── */
+    /* ─── エラーボックス ────────────────────────────────────────────────── */
     .error-box {
-      background: #FDEDEC;
+      background: var(--s-open-bg);
       border: 1px solid #F5C6C3;
       border-radius: var(--radius);
-      padding: 10px 12px;
+      padding: 9px 12px;
       font-size: 12px;
       color: var(--danger);
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
     }
+    .error-msg { font-weight: 500; }
 
-    .error-box .error-msg { font-weight: 500; }
-
-    /* ─── 空状態 ─────────────────────────────────────────────────────── */
+    /* ─── 空状態 ────────────────────────────────────────────────────────── */
     .empty {
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 12px;
-      padding: 24px;
+      text-align: center; color: var(--text-muted);
+      font-size: 12px; padding: 28px;
     }
 
-    /* ─── ページネーション ────────────────────────────────────────────── */
-    .pagination {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    /* ─── ユーティリティ ─────────────────────────────────────────────── */
+    /* ─── ユーティリティ ────────────────────────────────────────────────── */
     .hidden { display: none !important; }
   </style>
 </head>
@@ -409,9 +578,7 @@
         OAuth 2.0 PKCE フローを使用。クライアントシークレットは保持せず、
         認証情報はセッション中のみメモリに保持されます。
       </div>
-      <button id="btn-login" class="btn btn-primary">
-        <span>Autodesk でログイン</span>
-      </button>
+      <button id="btn-login" class="btn btn-primary">Autodesk でログイン</button>
     </div>
 
     <!-- ── メインビュー ───────────────────────────────────── -->
@@ -419,29 +586,28 @@
       <!-- ハブ選択 -->
       <div class="selector-group">
         <label>ハブ (Hub)</label>
-        <select id="sel-hub">
-          <option value="">ハブを選択...</option>
-        </select>
+        <select id="sel-hub"><option value="">ハブを選択...</option></select>
       </div>
 
       <!-- プロジェクト選択 -->
       <div class="selector-group">
         <label>プロジェクト</label>
-        <select id="sel-project" disabled>
-          <option value="">プロジェクトを選択...</option>
-        </select>
+        <select id="sel-project" disabled><option value="">プロジェクトを選択...</option></select>
       </div>
 
-      <!-- フィルター -->
+      <!-- フィルター行 -->
       <div class="filter-row">
         <div class="selector-group">
           <label>ステータス</label>
           <select id="sel-status">
             <option value="">すべて</option>
             <option value="open">未対応</option>
+            <option value="pending">保留中</option>
             <option value="in_progress">対応中</option>
+            <option value="work_completed">作業完了</option>
             <option value="answered">回答済</option>
             <option value="closed">完了</option>
+            <option value="void">無効</option>
           </select>
         </div>
         <button id="btn-reload" class="btn btn-ghost" title="再読み込み">&#8635;</button>

@@ -31,7 +31,7 @@
 
 import { CONFIG } from '../utils/config.js';
 import { generatePKCESet } from '../utils/pkce.js';
-import { fetchHubs, fetchProjects, fetchIssues, fetchIssueDetail, ApiError } from '../utils/acc-api.js';
+import { fetchHubs, fetchProjects, fetchIssues, fetchIssueDetail, fetchIssueComments, postIssueComment, ApiError } from '../utils/acc-api.js';
 
 // ─── ストレージキー定数 ──────────────────────────────────────────────────────
 const SESSION_KEY = 'acc_session';
@@ -65,6 +65,8 @@ async function handleMessage(message) {
     case 'FETCH_PROJECTS':   return handleFetchProjects(message.payload);
     case 'FETCH_ISSUES':     return handleFetchIssues(message.payload);
     case 'FETCH_ISSUE_DETAIL': return handleFetchIssueDetail(message.payload);
+    case 'FETCH_COMMENTS':   return handleFetchComments(message.payload);
+    case 'POST_COMMENT':     return handlePostComment(message.payload);
     default:
       return { error: `Unknown message type: ${message.type}` };
   }
@@ -425,6 +427,28 @@ async function handleFetchIssueDetail({ projectId, issueId }) {
   return withToken(async (token) => {
     const issue = await fetchIssueDetail(token, projectId, issueId);
     return { data: issue };
+  });
+}
+
+async function handleFetchComments({ projectId, issueId }) {
+  if (!projectId || !issueId) return { error: 'projectId と issueId が必要です' };
+  return withToken(async (token) => {
+    const comments = await fetchIssueComments(token, projectId, issueId);
+    return { data: comments };
+  });
+}
+
+async function handlePostComment({ projectId, issueId, body }) {
+  if (!projectId || !issueId) return { error: 'projectId と issueId が必要です' };
+  if (!body || typeof body !== 'string' || body.trim().length === 0) {
+    return { error: 'INVALID_BODY', message: 'コメント本文が空です' };
+  }
+  if (body.length > 10000) {
+    return { error: 'BODY_TOO_LONG', message: 'コメントは 10000 文字以内にしてください' };
+  }
+  return withToken(async (token) => {
+    const comment = await postIssueComment(token, projectId, issueId, body.trim());
+    return { data: comment };
   });
 }
 
