@@ -9,13 +9,19 @@ Autodesk Construction Cloud (ACC) の指摘事項をブラウザのポップア�
 | 機能 | 説明 |
 |---|---|
 | **OAuth 2.0 PKCE 認証** | Client Secret 不要。ブラウザ内で完結する安全な認証フロー |
+| **サイドパネル表示** | autodesk.com を開いている時、ブラウザ右側に常駐。ページを離れずに操作 |
 | **ハブ / プロジェクト選択** | ドロップダウンで ACC 組織・プロジェクトを切り替え |
-| **指摘事項テーブル表示** | タイトル・ステータス・担当者・期限を一覧表示。期限超過は赤字 |
+| **指摘事項テーブル表示** | タイトル・ステータス・担当者・期限・添付数を一覧表示。期限超過は赤字 |
+| **添付ファイル可視化** | 各行に 📎N バッジ。ホバーで「N件の添付あり」ツールチップ |
 | **リアルタイム検索フィルター** | タイトルと担当者名で即時フィルタリング。Esc キーでリセット |
 | **ステータスバッジ** | 9種類のステータスを左ボーダー付きカラーバッジで識別 |
-| **スティッキーヘッダー** | スクロール中もテーブルのヘッダー行が常に表示される |
-| **クイック返信** | 各行の 💬 ボタンでインラインコメントパネルを展開。Ctrl+Enter で送信 |
+| **スティッキーヘッダー** | 縦スクロール時もテーブルのヘッダー行が常に表示される |
+| **クイック返信** | 💬 ボタンでインライン返信パネル展開。Ctrl+Enter で送信 |
+| **定型文ボタン** | 「確認済」「是正完了」「次回定例で」を 1クリックで即時投稿 |
 | **連続投稿** | 送信後もパネルを閉じずに複数コメントを連続投稿可能 |
+| **チェックボックス一括選択** | 行左端のチェックボックスで複数選択 |
+| **一括ステータス変更** | 選択した指摘事項を一括で「回答済」に変更 |
+| **二重投稿防止** | 送信中はすべてのボタンを無効化。スピナー表示 |
 | **メモリオンリー** | 取得データをディスクへ永続化しない |
 
 ---
@@ -73,22 +79,25 @@ Client Secret をクライアント（拡張機能）に持たせない設計で
 
 ```
 ACC_Chrome_extension/
-├── manifest.json                  # Manifest V3
+├── manifest.json                    # Manifest V3 (v2.0.0 - Side Panel)
 ├── src/
 │   ├── background/
-│   │   └── service-worker.js      # OAuth フロー / API 呼び出し / トークン管理
-│   ├── popup/
-│   │   ├── popup.html             # UI (600px ポップアップ)
-│   │   └── popup.js               # テーブル描画 / 検索 / クイック返信
+│   │   └── service-worker.js        # OAuth / API / サイドパネル制御 / トークン管理
+│   ├── sidepanel/                   # ★ メイン UI（サイドパネル）
+│   │   ├── sidepanel.html           # サイドパネル HTML + CSS
+│   │   └── sidepanel.js             # 全機能 JS（検索・返信・一括操作）
+│   ├── popup/                       # 旧ポップアップ UI（参照用）
+│   │   ├── popup.html
+│   │   └── popup.js
 │   └── utils/
-│       ├── config.js              # 設定 (CLIENT_ID 等)
-│       ├── pkce.js                # RFC 7636 PKCE ユーティリティ
-│       └── acc-api.js             # ACC Issues API v2 クライアント
+│       ├── config.js                # 設定 (CLIENT_ID 等)
+│       ├── pkce.js                  # RFC 7636 PKCE ユーティリティ
+│       └── acc-api.js               # ACC Issues API v2 クライアント
 ├── icons/
-│   ├── icon.svg                   # ソース SVG
-│   └── generate-icons.js          # PNG 生成スクリプト
-└── relay-server/                  # オプション: 中継サーバー
-    ├── server.js                  # Express.js サーバー
+│   ├── icon.svg                     # ソース SVG
+│   └── generate-icons.js            # PNG 生成スクリプト
+└── relay-server/                    # オプション: 中継サーバー
+    ├── server.js                    # Express.js サーバー
     ├── package.json
     └── .env.example
 ```
@@ -162,10 +171,14 @@ RELAY_SERVER_URL: 'https://your-relay-server.example.com',
 |---|---|
 | タイトルをクリック | 詳細ビューへ移動 |
 | 💬 ボタン | 返信パネルを展開 / 折りたたむ |
+| 定型文ボタン（確認済 等） | 入力欄に自動入力して即時送信 |
+| `Ctrl+Enter` | コメントを送信 |
 | 検索バーに入力 | タイトル・担当者名でリアルタイムフィルタリング |
 | `Esc` キー | 検索をクリア |
-| `Ctrl+Enter` | コメントを送信 |
 | ✕ ボタン | 検索バーをクリア |
+| チェックボックス | 複数行を選択 |
+| 全選択 ボタン | 表示中の全行を選択 |
+| ✓ 回答済にする | 選択した指摘事項を一括で `answered` に変更 |
 
 ### ステータスバッジ一覧
 
@@ -220,6 +233,8 @@ popup から直接 API を呼ばないことで、トークンの露出リスク
 | `FETCH_ISSUE_DETAIL` | `{ projectId, issueId }` | 指摘事項の詳細を取得 |
 | `FETCH_COMMENTS` | `{ projectId, issueId }` | コメント一覧を取得 |
 | `POST_COMMENT` | `{ projectId, issueId, body }` | コメントを投稿 |
+| `PATCH_ISSUE_STATUS` | `{ projectId, issueId, status }` | 単一指摘事項のステータスを変更 |
+| `BULK_PATCH_STATUS` | `{ projectId, issueIds[], status }` | 複数指摘事項を一括変更（最大100件）|
 
 ### ローカル開発
 

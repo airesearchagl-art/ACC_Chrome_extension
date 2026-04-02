@@ -31,10 +31,45 @@
 
 import { CONFIG } from '../utils/config.js';
 import { generatePKCESet } from '../utils/pkce.js';
-import { fetchHubs, fetchProjects, fetchIssues, fetchIssueDetail, fetchIssueComments, postIssueComment, ApiError } from '../utils/acc-api.js';
+import { fetchHubs, fetchProjects, fetchIssues, fetchIssueDetail, fetchIssueComments, postIssueComment, patchIssueStatus, ApiError } from '../utils/acc-api.js';
 
 // ─── ストレージキー定数 ──────────────────────────────────────────────────────
 const SESSION_KEY = 'acc_session';
+
+// ─── サイドパネル設定 ────────────────────────────────────────────────────────
+// ACC（autodesk.com）ドメインを表示中のタブでのみアイコンクリックでパネルを開く
+const ACC_DOMAIN_RE = /(?:^|\.)autodesk\.com$/i;
+
+chrome.action.onClicked.addListener(tab => {
+  try {
+    const { hostname } = new URL(tab.url ?? '');
+    if (ACC_DOMAIN_RE.test(hostname)) {
+      chrome.sidePanel.open({ windowId: tab.windowId });
+    }
+  } catch {
+    // chrome:// 等パース不可な URL は無視
+  }
+});
+
+// タブのアクティブ化・URL 変更時にアイコンの有効/無効を同期
+async function syncActionBadge(tab) {
+  if (!tab?.id || tab.id < 0) return;
+  const enabled = ACC_DOMAIN_RE.test(new URL(tab.url ?? 'about:blank').hostname ?? '');
+  await chrome.action.setTitle({
+    tabId: tab.id,
+    title: enabled
+      ? 'ACC 指摘事項ビューア'
+      : 'ACC 指摘事項ビューア（autodesk.com で利用可能）',
+  }).catch(() => {});
+}
+
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  chrome.tabs.get(tabId).then(syncActionBadge).catch(() => {});
+});
+
+chrome.tabs.onUpdated.addListener((_tabId, info, tab) => {
+  if (info.url !== undefined) syncActionBadge(tab).catch(() => {});
+});
 
 // ─── メッセージハンドラ登録 ──────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -65,8 +100,10 @@ async function handleMessage(message) {
     case 'FETCH_PROJECTS':   return handleFetchProjects(message.payload);
     case 'FETCH_ISSUES':     return handleFetchIssues(message.payload);
     case 'FETCH_ISSUE_DETAIL': return handleFetchIssueDetail(message.payload);
-    case 'FETCH_COMMENTS':   return handleFetchComments(message.payload);
-    case 'POST_COMMENT':     return handlePostComment(message.payload);
+    case 'FETCH_COMMENTS':      return handleFetchComments(message.payload);
+    case 'POST_COMMENT':        return handlePostComment(message.payload);
+    case 'PATCH_ISSUE_STATUS':  return handlePatchIssueStatus(message.payload);
+    case 'BULK_PATCH_STATUS':   return handleBulkPatchStatus(message.payload);
     default:
       return { error: `Unknown message type: ${message.type}` };
   }
@@ -427,6 +464,33 @@ async function handleFetchIssueDetail({ projectId, issueId }) {
   return withToken(async (token) => {
     const issue = await fetchIssueDetail(token, projectId, issueId);
     return { data: issue };
+  });
+}
+
+async function handlePatchIssueStatus({ projectId, issueId, status }) {
+  if (!projectId || !issueId || !status) {
+    return { error: 'BAD_ARGS', message: 'projectId / issueId / status が必要です' };
+  }
+  return withToken(async (token) => {
+    const result = await patchIssueStatus(token, projectId, issueId, status);
+    return { data: result };
+  });
+}
+
+async function handleBulkPatchStatus({ projectId, issueIds, status }) {
+  if (!projectId || !Array.isArray(issueIds) || !status) {
+    return { error: 'BAD_ARGS', message: 'projectId / issueIds / status が必要です' };
+  }
+  if (issueIds.length === 0)   return { data: { updated: 0, failed: 0 } };
+  if (issueIds.length > 100)   return { error: 'TOO_MANY', message: '一度に 100 件を超えることはできません' };
+
+  return withToken(async (token) => {
+    const results = await Promise.allSettled(
+      issueIds.map(id => patchIssueStatus(token, projectId, id, status))
+    );
+    const updated = results.filter(r => r.status === 'fulfilled').length;
+    const failed  = results.filter(r => r.status === 'rejected').length;
+    return { data: { updated, failed } };
   });
 }
 

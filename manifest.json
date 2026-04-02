@@ -1,16 +1,19 @@
 {
   "manifest_version": 3,
   "name": "ACC 指摘事項ビューア",
-  "version": "1.0.0",
-  "description": "Autodesk Construction Cloud (ACC) の指摘事項を安全に取得・表示します",
+  "version": "2.0.0",
+  "description": "Autodesk Construction Cloud (ACC) の指摘事項をサイドパネルから確認・コメント投稿できます",
 
   "permissions": [
     "identity",
-    "storage"
+    "storage",
+    "sidePanel",
+    "tabs"
   ],
 
   "host_permissions": [
-    "https://developer.api.autodesk.com/*"
+    "https://developer.api.autodesk.com/*",
+    "https://*.autodesk.com/*"
   ],
 
   "background": {
@@ -19,13 +22,16 @@
   },
 
   "action": {
-    "default_popup": "src/popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     },
     "default_title": "ACC 指摘事項ビューア"
+  },
+
+  "side_panel": {
+    "default_path": "src/sidepanel/sidepanel.html"
   },
 
   "icons": {

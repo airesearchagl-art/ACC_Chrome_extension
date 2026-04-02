@@ -123,6 +123,26 @@ export async function fetchIssueDetail(accessToken, projectId, issueId) {
 }
 
 /**
+ * 指摘事項のステータスを更新する（PATCH）
+ * @param {string} accessToken
+ * @param {string} projectId
+ * @param {string} issueId
+ * @param {string} status - 'open'|'pending'|'in_progress'|'answered'|'closed' 等
+ * @returns {Promise<Issue>}
+ */
+export async function patchIssueStatus(accessToken, projectId, issueId, status) {
+  const normalizedProjectId = projectId.replace(/^b\./, '');
+  return apiFetch(
+    `${CONFIG.API_BASE}/construction/issues/v2/projects/${encodeURIComponent(normalizedProjectId)}/issues/${encodeURIComponent(issueId)}`,
+    accessToken,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    },
+  );
+}
+
+/**
  * 指摘事項のコメント一覧を取得する
  * @param {string} accessToken
  * @param {string} projectId
