@@ -27,12 +27,17 @@ const selStatus   = $('sel-status');
 const issuesContainer = $('issues-container');
 const detailContainer = $('detail-container');
 const loadingText     = $('loading-text');
+const inputSearch     = $('input-search');
+const btnSearchClear  = $('btn-search-clear');
 
 // ─── 状態（メモリのみ） ───────────────────────────────────────────────────────
 let currentPage = { projectId: null, offset: 0, total: 0, limit: 20 };
 
 /** 現在開いている返信パネルの issueId を追跡 */
 const openReplyPanels = new Set();
+
+/** 検索バーのデバウンスタイマー */
+let searchDebounceTimer = null;
 
 // ─── ステータスラベル・バッジ定義 ────────────────────────────────────────────
 const STATUS_LABELS = {
@@ -300,6 +305,16 @@ function renderIssues(issues, pagination) {
     tbody.appendChild(createReplyRow(issue.id));
   });
 
+  // 検索結果なし行（フィルター適用時に必要に応じて表示）
+  const trNoMatch = document.createElement('tr');
+  trNoMatch.className = 'search-no-match hidden';
+  trNoMatch.id = 'tr-no-match';
+  const tdNoMatch = document.createElement('td');
+  tdNoMatch.colSpan = 6;
+  tdNoMatch.textContent = '検索条件に一致する指摘事項がありません';
+  trNoMatch.appendChild(tdNoMatch);
+  tbody.appendChild(trNoMatch);
+
   wrapper.appendChild(table);
   issuesContainer.appendChild(wrapper);
 
@@ -335,6 +350,70 @@ function renderIssues(issues, pagination) {
 }
 
 /**
+ * テーブル行をリアルタイム検索フィルタリングする
+ *
+ * 検索対象: タイトル (data-search-title) と 担当者名 (data-search-assign)
+ * どちらか一方でも部分一致すれば表示する（OR 検索）
+ *
+ * @param {string} query - 検索文字列（空文字でフィルター解除）
+ */
+function applySearchFilter(query) {
+  const q = query.trim().toLowerCase();
+  const issueRows = document.querySelectorAll('.issues-table tbody .issue-row');
+  const trNoMatch = document.getElementById('tr-no-match');
+  let visibleCount = 0;
+
+  issueRows.forEach(tr => {
+    const titleMatch  = (tr.dataset.searchTitle  ?? '').includes(q);
+    const assignMatch = (tr.dataset.searchAssign ?? '').includes(q);
+    const matches = !q || titleMatch || assignMatch;
+
+    tr.classList.toggle('hidden', !matches);
+
+    // 対応する返信パネル行を連動させる
+    const issueId = tr.dataset.issueId;
+    const replyRow = document.querySelector(
+      `tr.reply-row[data-reply-for="${CSS.escape(issueId)}"]`
+    );
+    if (replyRow) {
+      if (!matches) {
+        // 非表示になる行の返信パネルは閉じてから隠す
+        if (openReplyPanels.has(issueId)) {
+          closeReplyPanel(issueId, tr, replyRow);
+        }
+        replyRow.classList.add('hidden');
+      }
+      // matches=true の場合は openReplyPanels の状態に委ねる（再表示しない）
+    }
+
+    if (matches) visibleCount++;
+  });
+
+  // 一致なし行の表示制御
+  trNoMatch?.classList.toggle('hidden', visibleCount > 0 || !q);
+
+  // issues-count テキストを更新
+  const countEl = issuesContainer.querySelector('.issues-count');
+  if (!countEl) return;
+
+  if (q) {
+    // 検索中: "N 件一致 / M 件中"
+    countEl.innerHTML =
+      `${visibleCount} 件一致` +
+      `<span class="match-badge">${visibleCount}</span>` +
+      ` / ${issueRows.length} 件中`;
+  } else {
+    // 検索クリア: 元のページネーション表示に戻す
+    const total  = currentPage.total;
+    const offset = currentPage.offset;
+    const limit  = currentPage.limit;
+    countEl.innerHTML = total > 0
+      ? `${offset + 1}〜${Math.min(offset + limit, total)} 件 / 全 ${total} 件`
+      : '';
+  }
+}
+
+/**
  * 指摘1行 <tr> を生成する
  * @param {Issue} issue
  * @param {number} rowNum
@@ -344,6 +423,9 @@ function createIssueRow(issue, rowNum) {
   const tr = document.createElement('tr');
   tr.className = 'issue-row';
   tr.dataset.issueId = issue.id;
+  // 検索フィルター用: 小文字正規化済みの値をデータ属性に格納
+  tr.dataset.searchTitle  = (issue.title ?? issue.id ?? '').toLowerCase();
+  tr.dataset.searchAssign = (issue.assignedTo ?? '').toLowerCase();
 
   const statusLabel = STATUS_LABELS[issue.status] ?? issue.status ?? '不明';
   const badgeClass  = `badge-${issue.status ?? 'default'}`;
@@ -724,6 +806,10 @@ function clearIssues() {
   issuesContainer.innerHTML = '';
   openReplyPanels.clear();
   currentPage = { projectId: null, offset: 0, total: 0, limit: 20 };
+  // 検索バーをリセット
+  inputSearch.value = '';
+  btnSearchClear.classList.add('hidden');
+  clearTimeout(searchDebounceTimer);
 }
 
 function showError(container, message) {
@@ -795,6 +881,33 @@ function formatDateTime(iso) {
     });
   } catch { return iso; }
 }
+
+// ─── 検索バー イベント ───────────────────────────────────────────────────────
+
+inputSearch.addEventListener('input', () => {
+  // クリアボタンの表示切り替え
+  btnSearchClear.classList.toggle('hidden', inputSearch.value.length === 0);
+
+  // 200ms デバウンスでフィルター適用（高速タイピング時のちらつき防止）
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => applySearchFilter(inputSearch.value), 200);
+});
+
+// Escape キーで検索クリア
+inputSearch.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    inputSearch.value = '';
+    btnSearchClear.classList.add('hidden');
+    applySearchFilter('');
+  }
+});
+
+btnSearchClear.addEventListener('click', () => {
+  inputSearch.value = '';
+  btnSearchClear.classList.add('hidden');
+  applySearchFilter('');
+  inputSearch.focus();
+});
 
 // ─── 起動 ────────────────────────────────────────────────────────────────────
 init();
